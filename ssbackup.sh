@@ -29,10 +29,40 @@ exec 3>&2
 exec 2> "$BACKUP_DIR/backup_error.log"
 
 # set a bunch of variables
+for FN in "$@"
+do
+	case "$FN" in
+		'--migrate')
+		DO_MIGRATION='true'
+		;;
+	esac
+done
 
 # make sure wp-config.php actually exists before doing anything else
 if [ -f "$WP_CONFIG" ]
 then
+	# add prompts for migration
+	if [ 'true' == "$DO_MIGRATION" ]
+	then
+		# get the new domain name
+		echo "enter the new home url"
+		read -p 'Please enter the new Home URL [ex.: http://www.mynewsite.com] and hit Enter: ' NEW_HOME_URL
+		if [ "" == "$NEW_HOME_URL" ]
+		then
+			DO_MIGRATION='false'
+			echo 'The Home URL cannot be blank. Proceeding without preparing for a migration.'
+		else
+			echo "You entered $NEW_HOME_URL. What is the new Site URL?"
+			read -p "Please enter the new Site URL [ex.: $NEW_HOME_URL/blog - leave blank to use the new Home URL] and hit Enter: " NEW_SITE_URL
+			if [ "" == "$NEW_SITE_URL" ]
+			then
+				NEW_SITE_URL="$NEW_HOME_URL"
+				echo "Using the new Home URL ($NEW_HOME_URL) as the new Site URL."
+			fi
+			echo "The new Site URL is $NEW_SITE_URL."
+		fi
+	fi
+	
 	echo "Found the wp-config.php file. This is good!"
 	# get the DB config from wp-config.php
 	DB_NAME=$(grep -o -E '^\s*define.+?DB_NAME.+?,\s*.+?[a-zA-Z_][a-zA-Z_0-9]*' "$WP_CONFIG" | cut -d"'" -f 4)
@@ -148,7 +178,23 @@ then
 		else
 			echo "All required tables appear to be defined in the dump"
 		fi
-		echo "All tests have passed. Proceeding with the backup."
+		echo "All tests have passed. Proceeding..."
+		
+		if [ 'true' == "$DO_MIGRATION" ]
+		then
+			echo "Preparing the database for migration to a new server."
+			# get the old Site and Home URLs
+			# (1,'siteurl','http://newmoneytree.local/~tedsr/isluk_v2/','yes'),
+			# (33,'home','http://newmoneytree.local/~tedsr/isluk_v2/','yes'),
+			OLD_SITE_URL=$(grep -o -E "\([0-9]+,'siteurl','.+?','(yes|no)'\)," "$DB_BACKUP_FILE" | cut -d"'" -f 4)
+			OLD_HOME_URL=$(grep -o -E "\([0-9]+,'home','.+?','(yes|no)'\)," "$DB_BACKUP_FILE" | cut -d"'" -f 4)
+			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed "s@$OLD_SITE_URL@$NEW_SITE_URL@g")
+			echo "$NEW_SQL" > "$DB_BACKUP_FILE"
+			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed "s@$OLD_HOME_URL@$NEW_HOME_URL@g")
+			echo "$NEW_SQL" > "$DB_BACKUP_FILE"
+			echo "Updated references to $OLD_SITE_URL and $OLD_HOME_URL to $NEW_SITE_URL and $NEW_HOME_URL."
+		fi
+
 		tar -czf "$BACKUP_DIR/$BACKUP_NAME_TGZ" -C "$THIS_DIR/$PUBLIC_HTML" .
 		echo "Cleaning up..."
 		rm -f "$MYSQLDCOMMAND"
