@@ -11,11 +11,25 @@
 
 # The above script will be called ss_backup.sh. It will take no parameters but must be run from the account home (a.k.a. ~/). It expects to find a web root called public_html. 
  
+# set a bunch of variables
+for FN in "$@"
+do
+	case "$FN" in
+		'--migrate')
+			shift
+			DO_MIGRATION='true'
+		;;
+		'--documentroot')
+			shift
+			DOC_ROOT="${1:-public_html}"
+		;;
+	esac
+done
 
 # set some environment variables
 THIS_DIR=$( pwd )
 BACKUP_DIR="$THIS_DIR/SecretSourceBackups"
-PUBLIC_HTML="public_html"
+PUBLIC_HTML="${DOC_ROOT:=public_html}"
 mkdir -p "$BACKUP_DIR"
 DATEFILE='%Y-%m-%d_%H%M%S'
 BACKUP_NAME=$(echo "backup_"`date +$DATEFILE`)
@@ -27,16 +41,6 @@ MYSQLDCOMMAND="$BACKUP_DIR/mysqldump.sh"
 exec 3>&2
 # Redirect any output to STDERR to an error log file instead 
 exec 2> "$BACKUP_DIR/backup_error.log"
-
-# set a bunch of variables
-for FN in "$@"
-do
-	case "$FN" in
-		'--migrate')
-		DO_MIGRATION='true'
-		;;
-	esac
-done
 
 # make sure wp-config.php actually exists before doing anything else
 if [ -f "$WP_CONFIG" ]

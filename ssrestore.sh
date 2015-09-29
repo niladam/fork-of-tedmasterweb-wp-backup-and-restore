@@ -12,12 +12,25 @@
 # Deletes .sql found inside web root produced by script above
 
 echo "Starting a restore procedure."
+# set a bunch of variables
+for FN in "$@"
+do
+	case "$FN" in
+		'--documentroot')
+			shift
+			DOC_ROOT="${1:-public_html}"
+		;;
+	esac
+done
+
+# set some environment variables
 THIS_DIR=$( pwd )
 BACKUP_DIR="$THIS_DIR/SecretSourceBackups"
+PUBLIC_HTML="${DOC_ROOT:=public_html}"
 TEMP_DIR="$BACKUP_DIR/temp"
 DATEFILE='%Y-%m-%d_%H%M%S'
 FAILED_UPDATE_NAME=$(echo "failed_update_"`date +$DATEFILE`)
-WP_CONFIG="$THIS_DIR/public_html/wp-config.php"
+WP_CONFIG="$THIS_DIR/$PUBLIC_HTML/wp-config.php"
 MYSQLDCOMMAND="$BACKUP_DIR/mysqldump.sh"
 
 # Optional, save the "old" STDERR
@@ -97,18 +110,18 @@ then
 		OFS=$IFS
 		IFS="
 	"
-		directorylist=$(for i in $BACKUP_DIR/${DB_NAME}_backup_20*; do [ -f "$i" ] && basename "$i"; done)
+		backup_filelist=$(for i in $BACKUP_DIR/${DB_NAME}_backup_20*; do [ -f "$i" ] && basename "$i"; done)
 		PS3='Restore a site from backup: '
-		until [ "$directory" == "Finished" ]; do
+		until [ "$backup_file" == "Finished" ]; do
 			printf "%b" "\a\n\nPlease type the number of the archive you would like to restore from:\n" >&2 
-			select directory in $directorylist; do
+			select backup_file in $backup_filelist; do
 				# User types a number which is stored in $REPLY, but select 
 				# returns the value of the entry
-				if [ "$directory" == "Finished" ]; then
+				if [ "$backup_file" == "Finished" ]; then
 					echo "Finished processing directories."
 					break
-				elif [ -n "$directory" ]; then
-					echo "You chose number $REPLY, processing $directory..."
+				elif [ -n "$backup_file" ]; then
+					echo "You chose number $REPLY, processing $backup_file..."
 					# make a backup of the failed update
 					echo "Making a backup of the failed update."
 					# this line needs to be updated when in production as it
@@ -122,10 +135,10 @@ then
 					echo "Uncompressing the selected backup file."
 					# uncompress the desired backup
 					mkdir -p "$TEMP_DIR"
-					tar -zxf "$BACKUP_DIR/$directory" -C "$TEMP_DIR"
+					tar -zxf "$BACKUP_DIR/$backup_file" -C "$TEMP_DIR"
 				
 					# get the name of the restore database
-					DB_RESTORE_NAME=$(echo $directory | cut -d'.' -f 1 | cut -d'_' -f 2-4)
+					DB_RESTORE_NAME=$(echo $backup_file | cut -d'.' -f 1 | cut -d'_' -f 2-4)
 					echo "Restoring from $DB_RESTORE_NAME.sql"
 				
 					echo "Restoring the database."
@@ -142,23 +155,23 @@ then
 				
 					echo "Restoring the WP files and all uploaded content."
 					# delete everything in public_html
-					rm -Rf "$THIS_DIR/public_html/*"
+					rm -Rf "$THIS_DIR/$PUBLIC_HTML/*"
 				
 					# move contents of restore folder to public_html
-					cp -R "$TEMP_DIR/" "$THIS_DIR/public_html/"
+					cp -R "$TEMP_DIR/" "$THIS_DIR/$PUBLIC_HTML/"
 				
 					echo "Removing temporary files."
 					# delete uncompressed folder (house cleaning)
 					rm -Rf "$TEMP_DIR"
 					rm -f "$BACKUP_DIR/mysql_restore.sh"
-					rm -f "$THIS_DIR/public_html/$DB_RESTORE_NAME.sql"
+					rm -f "$THIS_DIR/$PUBLIC_HTML/$DB_RESTORE_NAME.sql"
 					echo "Done! The site has been restored."
 					exit 0
 					break
 				else
 					echo "Invalid selection!"
 				fi # end of handle user's selection
-			done # end of select a directory 
+			done # end of select a backup_file 
 		done # end of until dir == finished
 		IFS=$OFS
 	else
