@@ -36,12 +36,62 @@ then
 		DB_USER=$(grep -o -E '^\s*define.+?DB_USER.+?,\s*.+?[a-zA-Z_][a-zA-Z_0-9]*' "$WP_CONFIG" | cut -d"'" -f 4)
 		DB_PASS=$(grep -o -E '^\s*define.+?DB_PASSWORD.+' "$WP_CONFIG" | cut -d"'" -f 4)
 		DB_HOST=$(grep -o -E '^\s*define.+?DB_HOST.+?,\s*.+?[0-9a-zA-Z_\.]*' "$WP_CONFIG" | cut -d"'" -f 4)
+		# if the password is empty, as could be the case for insecure servers, don't use the -p switch
 		if [ "" == "$DB_PASS" ]
 		then
-			PASS=''
+			echo "Either the password is blank or we were unable to find it."
+			read -p "Please enter the password for this site and hit Enter, or hit Enter to leave it blank: " DB_PASS
+			if [ "" == "$DB_PASS" ]
+			then
+				PASS=''
+			else
+				PASS="$DB_PASS"
+			fi
 		else
 			echo "The password is NOT empty, this is good!"
 			PASS="-p'$DB_PASS'"
+		fi
+	
+		if [ "" == "$DB_USER" ]
+		then
+			echo "Either the database username is blank or we were unable to find it."
+			read -p "Please enter the database username for this site and hit Enter: " DB_USER
+			if [ "" == "$DB_USER" ]
+			then
+				echo "We're sorry but the database username cannot be left blank."
+				echo "No action has been taken."
+				exit 104
+			fi
+		fi
+	
+		if [ "" == "$DB_NAME" ]
+		then
+			echo "Either the database name is blank or we were unable to find it."
+			read -p "Please enter the database name for this site and hit Enter: " DB_NAME
+			if [ "" == "$DB_NAME" ]
+			then
+				echo "We're sorry but the database name cannot be left blank."
+				echo "No action has been taken."
+				exit 105
+			fi
+		fi
+	
+		if [ "" == "$DB_HOST" ]
+		then
+			echo "Either the database host is blank or we were unable to find it."
+			read -p "Please enter the database host for this site and hit Enter: " DB_HOST
+			if [ "" == "$DB_HOST" ]
+			then
+				echo "We're sorry but the database host cannot be left blank."
+				echo "No action has been taken."
+				exit 106
+			fi
+		fi
+	
+		HOST_HAS_PORT=$(echo $DB_HOST | grep -o ':')
+		if [ ! "" == "$HOST_HAS_PORT" ]
+		then
+			DB_HOST=${DB_HOST/\:[0-9]*/}
 		fi
 		FAILED_UPDATE_NAME_TGZ="${DB_NAME}_$FAILED_UPDATE_NAME.tar.gz"
 		OFS=$IFS

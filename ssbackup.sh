@@ -15,11 +15,12 @@
 # set some environment variables
 THIS_DIR=$( pwd )
 BACKUP_DIR="$THIS_DIR/SecretSourceBackups"
+PUBLIC_HTML="public_html"
 mkdir -p "$BACKUP_DIR"
 DATEFILE='%Y-%m-%d_%H%M%S'
 BACKUP_NAME=$(echo "backup_"`date +$DATEFILE`)
-WP_CONFIG="$THIS_DIR/public_html/wp-config.php"
-DB_BACKUP_FILE="$THIS_DIR/public_html/$BACKUP_NAME.sql"
+WP_CONFIG="$THIS_DIR/$PUBLIC_HTML/wp-config.php"
+DB_BACKUP_FILE="$THIS_DIR/$PUBLIC_HTML/$BACKUP_NAME.sql"
 MYSQLDCOMMAND="$BACKUP_DIR/mysqldump.sh"
 
 # Optional, save the "old" STDERR
@@ -38,16 +39,78 @@ then
 	DB_USER=$(grep -o -E '^\s*define.+?DB_USER.+?,\s*.+?[a-zA-Z_][a-zA-Z_0-9]*' "$WP_CONFIG" | cut -d"'" -f 4)
 	DB_PASS=$(grep -o -E '^\s*define.+?DB_PASSWORD.+' "$WP_CONFIG" | cut -d"'" -f 4)
 	DB_HOST=$(grep -o -E '^\s*define.+?DB_HOST.+?,\s*.+?[0-9a-zA-Z_\.]*' "$WP_CONFIG" | cut -d"'" -f 4)
+	DB_TABLE_PREFIX=$(grep -o -E '^\s*\$table_prefix\s*=\s*.*' "$WP_CONFIG" | cut -d"'" -f 2)
 	BACKUP_NAME_TGZ="${DB_NAME}_$BACKUP_NAME.tar.gz"
 
 	# if the password is empty, as could be the case for insecure servers, don't use the -p switch
 	if [ "" == "$DB_PASS" ]
 	then
-		PASS=''
+		echo "Either the password is blank or we were unable to find it."
+		read -p "Please enter the password for this site and hit Enter, or hit Enter to leave it blank: " DB_PASS
+		if [ "" == "$DB_PASS" ]
+		then
+			PASS=''
+		else
+			PASS="$DB_PASS"
+		fi
 	else
 		echo "The password is NOT empty, this is good!"
 		PASS="-p'$DB_PASS'"
 	fi
+	
+	if [ "" == "$DB_USER" ]
+	then
+		echo "Either the database username is blank or we were unable to find it."
+		read -p "Please enter the database username for this site and hit Enter: " DB_USER
+		if [ "" == "$DB_USER" ]
+		then
+			echo "We're sorry but the database username cannot be left blank."
+			echo "No action has been taken."
+			exit 104
+		fi
+	fi
+	
+	if [ "" == "$DB_NAME" ]
+	then
+		echo "Either the database name is blank or we were unable to find it."
+		read -p "Please enter the database name for this site and hit Enter: " DB_NAME
+		if [ "" == "$DB_NAME" ]
+		then
+			echo "We're sorry but the database name cannot be left blank."
+			echo "No action has been taken."
+			exit 105
+		fi
+	fi
+	
+	if [ "" == "$DB_HOST" ]
+	then
+		echo "Either the database host is blank or we were unable to find it."
+		read -p "Please enter the database host for this site and hit Enter: " DB_HOST
+		if [ "" == "$DB_HOST" ]
+		then
+			echo "We're sorry but the database host cannot be left blank."
+			echo "No action has been taken."
+			exit 106
+		fi
+	fi
+	
+	HOST_HAS_PORT=$(echo $DB_HOST | grep -o ':')
+	if [ ! "" == "$HOST_HAS_PORT" ]
+	then
+		DB_HOST=${DB_HOST/\:[0-9]*/}
+	fi
+	
+	if [ "" == "$DB_TABLE_PREFIX" ]
+	then
+		echo "Either the table prefix is blank or we were unable to find it."
+		read -p "Please enter the table prefix for this site and hit Enter: " DB_TABLE_PREFIX
+		if [ "" == "$DB_TABLE_PREFIX" ]
+		then
+			echo "It's unusual for the table prefix to be completely blank, but not impossible."
+			echo "We'll give it a whirl regardless. Proceeding..."
+		fi
+	fi
+	
 	# dump the db to a file inside the web root
 	# there is some kind of bizzare issue porhibiting me from quoting the value of the password parameter
 	# as a workaround, I'm going to try writing the command to an external file and executing it instead of trying to run it here
@@ -76,7 +139,7 @@ then
 		#	make sure some key tables are defined
 		# grep the backup file looking for definitions of default tables
 		# if all the tables are there (as judged by the number of lines found, S/B 11) then proceed
-		TABLES=$(grep -c -E 'CREATE TABLE `(wp_commentmeta|wp_comments|wp_links|wp_options|wp_postmeta|wp_posts|wp_term_relationships|wp_term_taxonomy|wp_terms|wp_usermeta|wp_users)`' "$DB_BACKUP_FILE")
+		TABLES=$(grep -c -E 'CREATE TABLE `'${DB_TABLE_PREFIX}'(commentmeta|comments|links|options|postmeta|posts|term_relationships|term_taxonomy|terms|usermeta|users)`' "$DB_BACKUP_FILE")
 		if [ $TABLES -lt 11 ]
 		then
 			echo "The backup seems to have failed. Specifically, we seem to be missing some core tables in the database backup. Please check the file and try again."
@@ -86,7 +149,7 @@ then
 			echo "All required tables appear to be defined in the dump"
 		fi
 		echo "All tests have passed. Proceeding with the backup."
-		tar -czf "$BACKUP_DIR/$BACKUP_NAME_TGZ" -C "$THIS_DIR/public_html" .
+		tar -czf "$BACKUP_DIR/$BACKUP_NAME_TGZ" -C "$THIS_DIR/$PUBLIC_HTML" .
 		echo "Cleaning up..."
 		rm -f "$MYSQLDCOMMAND"
 		rm -f "$DB_BACKUP_FILE"
