@@ -121,7 +121,7 @@ then
 					echo "Making a backup of the failed update."
 					# this line needs to be updated when in production as it
 					# will no longer source it, but rather run it as a command
-					ssbackup.sh 2> "$BACKUP_DIR/backup_error.log"
+					ssbackup.sh
 					# get the most recently created file and rename it
 					F=$(find "$BACKUP_DIR" -iname *.tar.gz -type f | sort | tail -n 1)
 					NF=$(basename "$F")
