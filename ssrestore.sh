@@ -33,8 +33,8 @@ FAILED_UPDATE_NAME=$(echo "failed_update_"`date +$DATEFILE`)
 WP_CONFIG="$THIS_DIR/$PUBLIC_HTML/wp-config.php"
 MYSQLDCOMMAND="$BACKUP_DIR/mysqldump.sh"
 
-BACKUPS_EXIST=$(find "$BACKUP_DIR" -iname "*_backup_20*.tar.gz" | wc -l)
-if [ $BACKUPS_EXIST -gt 0 ]
+BACKUPS_EXIST=$(find "$BACKUP_DIR" -iname "*_backup_20*.tar.gz" | wc -c)
+if [ $BACKUPS_EXIST -gt 1 ]
 then
 	if [ -f "$WP_CONFIG" ]
 	then
@@ -105,70 +105,77 @@ then
 		OFS=$IFS
 		IFS="
 	"
-		backup_filelist=$(for i in $BACKUP_DIR/${DB_NAME}_backup_20*; do [ -f "$i" ] && basename "$i"; done)
-		PS3='Restore a site from backup: '
-		until [ "$backup_file" == "Finished" ]; do
-			printf "%b" "\a\n\nPlease type the number of the archive you would like to restore from:\n" >&2 
-			select backup_file in $backup_filelist; do
-				# User types a number which is stored in $REPLY, but select 
-				# returns the value of the entry
-				if [ "$backup_file" == "Finished" ]; then
-					echo "Finished processing directories."
-					break
-				elif [ -n "$backup_file" ]; then
-					echo "You chose number $REPLY, processing $backup_file..."
-					# make a backup of the failed update
-					echo "Making a backup of the failed update."
-					# this line needs to be updated when in production as it
-					# will no longer source it, but rather run it as a command
-					ssbackup.sh
-					# get the most recently created file and rename it
-					F=$(find "$BACKUP_DIR" -iname *.tar.gz -type f | sort | tail -n 1)
-					NF=$(basename "$F")
-					mv "$F" "$BACKUP_DIR/$FAILED_UPDATE_NAME_TGZ" 2> "$BACKUP_DIR/backup_error.log"
+		backup_filelist=$(ls "$BACKUP_DIR" | grep "${DB_NAME}_backup_20")
+		backup_filelist_bytes=$(echo "$backup_filelist" | wc -c)
+		if [ $backup_filelist_bytes -gt 1 ]
+		then
+			PS3='Restore a site from backup: '
+			until [ "$backup_file" == "Finished" ]; do
+				printf "%b" "\a\n\nPlease type the number of the archive you would like to restore from:\n" >&2 
+				select backup_file in $backup_filelist; do
+					# User types a number which is stored in $REPLY, but select 
+					# returns the value of the entry
+					if [ "$backup_file" == "Finished" ]; then
+						echo "Finished processing directories."
+						break
+					elif [ -n "$backup_file" ]; then
+						echo "You chose number $REPLY, processing $backup_file..."
+						# make a backup of the failed update
+						echo "Making a backup of the failed update."
+						# this line needs to be updated when in production as it
+						# will no longer source it, but rather run it as a command
+						ssbackup.sh
+						# get the most recently created file and rename it
+						F=$(find "$BACKUP_DIR" -iname *.tar.gz -type f | sort | tail -n 1)
+						NF=$(basename "$F")
+						mv "$F" "$BACKUP_DIR/$FAILED_UPDATE_NAME_TGZ" 2> "$BACKUP_DIR/backup_error.log"
 				
-					echo "Uncompressing the selected backup file."
-					# uncompress the desired backup
-					mkdir -p "$TEMP_DIR" 2> "$BACKUP_DIR/backup_error.log"
-					tar -zxf "$BACKUP_DIR/$backup_file" -C "$TEMP_DIR" 2> "$BACKUP_DIR/backup_error.log"
+						echo "Uncompressing the selected backup file."
+						# uncompress the desired backup
+						mkdir -p "$TEMP_DIR" 2> "$BACKUP_DIR/backup_error.log"
+						tar -zxf "$BACKUP_DIR/$backup_file" -C "$TEMP_DIR" 2> "$BACKUP_DIR/backup_error.log"
 				
-					# get the name of the restore database
-					DB_RESTORE_NAME=$(echo $backup_file | cut -d'.' -f 1 | cut -d'_' -f 2-4)
-					echo "Restoring from $DB_RESTORE_NAME.sql"
+						# get the name of the restore database
+						DB_RESTORE_NAME=$(echo $backup_file | cut -d'.' -f 1 | cut -d'_' -f 2-4)
+						echo "Restoring from $DB_RESTORE_NAME.sql"
 				
-					echo "Restoring the database."
-					# put WP into maintenace mode, if possible
-					# drop and reimport the database
-					echo '#!/bin/sh' > "$BACKUP_DIR/mysql_restore.sh"
-					echo "
+						echo "Restoring the database."
+						# put WP into maintenace mode, if possible
+						# drop and reimport the database
+						echo '#!/bin/sh' > "$BACKUP_DIR/mysql_restore.sh"
+						echo "
 				
-					" >> "$BACKUP_DIR/mysql_restore.sh"
-					echo "mysql -u $DB_USER $PASS -h $DB_HOST -e 'DROP DATABASE IF EXISTS $DB_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
-					echo "mysql -u $DB_USER $PASS -h $DB_HOST -e 'CREATE DATABASE IF NOT EXISTS $DB_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
-					echo "mysql -u $DB_USER $PASS -h $DB_HOST '$DB_NAME' < '$TEMP_DIR/$DB_RESTORE_NAME.sql'" >> "$BACKUP_DIR/mysql_restore.sh"
-					. "$BACKUP_DIR/mysql_restore.sh" 2> "$BACKUP_DIR/backup_error.log"
+						" >> "$BACKUP_DIR/mysql_restore.sh"
+						echo "mysql -u $DB_USER $PASS -h $DB_HOST -e 'DROP DATABASE IF EXISTS $DB_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
+						echo "mysql -u $DB_USER $PASS -h $DB_HOST -e 'CREATE DATABASE IF NOT EXISTS $DB_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
+						echo "mysql -u $DB_USER $PASS -h $DB_HOST '$DB_NAME' < '$TEMP_DIR/$DB_RESTORE_NAME.sql'" >> "$BACKUP_DIR/mysql_restore.sh"
+						. "$BACKUP_DIR/mysql_restore.sh" 2> "$BACKUP_DIR/backup_error.log"
 				
-					echo "Restoring the WP files and all uploaded content."
-					# delete everything in public_html
-					rm -Rf "$THIS_DIR/$PUBLIC_HTML/*" 2> "$BACKUP_DIR/backup_error.log"
+						echo "Restoring the WP files and all uploaded content."
+						# delete everything in public_html
+						rm -Rf "$THIS_DIR/$PUBLIC_HTML/*" 2> "$BACKUP_DIR/backup_error.log"
 				
-					# move contents of restore folder to public_html
-					cp -R "$TEMP_DIR/" "$THIS_DIR/$PUBLIC_HTML/" 2> "$BACKUP_DIR/backup_error.log"
+						# move contents of restore folder to public_html
+						cp -R "$TEMP_DIR/" "$THIS_DIR/$PUBLIC_HTML/" 2> "$BACKUP_DIR/backup_error.log"
 				
-					echo "Removing temporary files."
-					# delete uncompressed folder (house cleaning)
-					rm -Rf "$TEMP_DIR" 2> "$BACKUP_DIR/backup_error.log"
-					rm -f "$BACKUP_DIR/mysql_restore.sh" 2> "$BACKUP_DIR/backup_error.log"
-					rm -f "$THIS_DIR/$PUBLIC_HTML/$DB_RESTORE_NAME.sql" 2> "$BACKUP_DIR/backup_error.log"
-					echo "Done! The site has been restored."
-					exit 0
-					break
-				else
-					echo "Invalid selection!"
-				fi # end of handle user's selection
-			done # end of select a backup_file 
-		done # end of until dir == finished
-		IFS=$OFS
+						echo "Removing temporary files."
+						# delete uncompressed folder (house cleaning)
+						rm -Rf "$TEMP_DIR" 2> "$BACKUP_DIR/backup_error.log"
+						rm -f "$BACKUP_DIR/mysql_restore.sh" 2> "$BACKUP_DIR/backup_error.log"
+						rm -f "$THIS_DIR/$PUBLIC_HTML/$DB_RESTORE_NAME.sql" 2> "$BACKUP_DIR/backup_error.log"
+						echo "Done! The site has been restored."
+						exit 0
+						break
+					else
+						echo "Invalid selection!"
+					fi # end of handle user's selection
+				done # end of select a backup_file 
+			done # end of until dir == finished
+			IFS=$OFS
+		else
+			echo "No backup files are available for restoring."
+			exit 107 
+		fi
 	else
 		echo "Damn! Can't find the wp-config.php file!"
 	fi
