@@ -37,11 +37,6 @@ WP_CONFIG="$THIS_DIR/$PUBLIC_HTML/wp-config.php"
 DB_BACKUP_FILE="$THIS_DIR/$PUBLIC_HTML/$BACKUP_NAME.sql"
 MYSQLDCOMMAND="$BACKUP_DIR/mysqldump.sh"
 
-# Optional, save the "old" STDERR
-exec 3>&2
-# Redirect any output to STDERR to an error log file instead 
-exec 2> "$BACKUP_DIR/backup_error.log"
-
 # make sure wp-config.php actually exists before doing anything else
 if [ -f "$WP_CONFIG" ]
 then
@@ -49,7 +44,6 @@ then
 	if [ 'true' == "$DO_MIGRATION" ]
 	then
 		# get the new domain name
-		echo "enter the new home url"
 		read -p 'Please enter the new Home URL [ex.: http://www.mynewsite.com] and hit Enter: ' NEW_HOME_URL
 		if [ "" == "$NEW_HOME_URL" ]
 		then
@@ -154,14 +148,14 @@ then
 	" >> "$MYSQLDCOMMAND"
 	# not really sure how to capture a non-zero exit status from the command below
 	echo "mysqldump -u '$DB_USER' $PASS -h $DB_HOST '$DB_NAME' > '$DB_BACKUP_FILE'" >> "$MYSQLDCOMMAND"
-	. "$MYSQLDCOMMAND"
+	. "$MYSQLDCOMMAND" 2> "$BACKUP_DIR/backup_error.log"
 
 	if [ -f "$DB_BACKUP_FILE" ]
 	then
 		echo "The backup file was created. Checking to see if it is valid."
 		# do a sanity check
 		#	make sure it is a minimum size
-		DB_BACKUP_FILE_SIZE=$(du -k "$DB_BACKUP_FILE" | cut -f 1)
+		DB_BACKUP_FILE_SIZE=$(du -k "$DB_BACKUP_FILE" | cut -f 1) 2> "$BACKUP_DIR/backup_error.log"
 		if [ "$DB_BACKUP_FILE_SIZE" -lt 500 ]
 		then
 			# file size is too small
@@ -173,7 +167,7 @@ then
 		#	make sure some key tables are defined
 		# grep the backup file looking for definitions of default tables
 		# if all the tables are there (as judged by the number of lines found, S/B 11) then proceed
-		TABLES=$(grep -c -E 'CREATE TABLE `'${DB_TABLE_PREFIX}'(commentmeta|comments|links|options|postmeta|posts|term_relationships|term_taxonomy|terms|usermeta|users)`' "$DB_BACKUP_FILE")
+		TABLES=$(grep -c -E 'CREATE TABLE `'${DB_TABLE_PREFIX}'(commentmeta|comments|links|options|postmeta|posts|term_relationships|term_taxonomy|terms|usermeta|users)`' "$DB_BACKUP_FILE") 2> "$BACKUP_DIR/backup_error.log"
 		if [ $TABLES -lt 11 ]
 		then
 			echo "The backup seems to have failed. Specifically, we seem to be missing some core tables in the database backup. Please check the file and try again."
@@ -190,19 +184,19 @@ then
 			# get the old Site and Home URLs
 			# (1,'siteurl','http://newmoneytree.local/~tedsr/isluk_v2/','yes'),
 			# (33,'home','http://newmoneytree.local/~tedsr/isluk_v2/','yes'),
-			OLD_SITE_URL=$(grep -o -E "\([0-9]+,'siteurl','.+?','(yes|no)'\)," "$DB_BACKUP_FILE" | cut -d"'" -f 4)
-			OLD_HOME_URL=$(grep -o -E "\([0-9]+,'home','.+?','(yes|no)'\)," "$DB_BACKUP_FILE" | cut -d"'" -f 4)
-			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed "s@$OLD_SITE_URL@$NEW_SITE_URL@g")
-			echo "$NEW_SQL" > "$DB_BACKUP_FILE"
-			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed "s@$OLD_HOME_URL@$NEW_HOME_URL@g")
-			echo "$NEW_SQL" > "$DB_BACKUP_FILE"
+			OLD_SITE_URL=$(grep -o -E "\([0-9]+,'siteurl','.+?','(yes|no)'\)," "$DB_BACKUP_FILE" | cut -d"'" -f 4) 2> "$BACKUP_DIR/backup_error.log"
+			OLD_HOME_URL=$(grep -o -E "\([0-9]+,'home','.+?','(yes|no)'\)," "$DB_BACKUP_FILE" | cut -d"'" -f 4) 2> "$BACKUP_DIR/backup_error.log"
+			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed "s@$OLD_SITE_URL@$NEW_SITE_URL@g") 2> "$BACKUP_DIR/backup_error.log"
+			echo "$NEW_SQL" > "$DB_BACKUP_FILE" 2> "$BACKUP_DIR/backup_error.log"
+			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed "s@$OLD_HOME_URL@$NEW_HOME_URL@g") 2> "$BACKUP_DIR/backup_error.log"
+			echo "$NEW_SQL" > "$DB_BACKUP_FILE" 2> "$BACKUP_DIR/backup_error.log"
 			echo "Updated references to $OLD_SITE_URL and $OLD_HOME_URL to $NEW_SITE_URL and $NEW_HOME_URL."
 		fi
 
-		tar -czf "$BACKUP_DIR/$BACKUP_NAME_TGZ" -C "$THIS_DIR/$PUBLIC_HTML" .
+		tar -czf "$BACKUP_DIR/$BACKUP_NAME_TGZ" -C "$THIS_DIR/$PUBLIC_HTML" . 2> "$BACKUP_DIR/backup_error.log"
 		echo "Cleaning up..."
-		rm -f "$MYSQLDCOMMAND"
-		rm -f "$DB_BACKUP_FILE"
+		rm -f "$MYSQLDCOMMAND" 2> "$BACKUP_DIR/backup_error.log"
+		rm -f "$DB_BACKUP_FILE" 2> "$BACKUP_DIR/backup_error.log"
 		echo "Done. The backup file is: $BACKUP_DIR/$BACKUP_NAME_TGZ"
 	else
 		echo "backup file doesn't exist"
@@ -215,6 +209,3 @@ else
 	echo "Have gremlins eaten it?"
 	exit 101
 fi
-
-# Turn off redirect by reverting STDERR and closing FH3 
-exec 2>&3-

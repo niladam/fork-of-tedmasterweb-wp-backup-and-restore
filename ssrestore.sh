@@ -33,11 +33,6 @@ FAILED_UPDATE_NAME=$(echo "failed_update_"`date +$DATEFILE`)
 WP_CONFIG="$THIS_DIR/$PUBLIC_HTML/wp-config.php"
 MYSQLDCOMMAND="$BACKUP_DIR/mysqldump.sh"
 
-# Optional, save the "old" STDERR
-# exec 3>&2
-# Redirect any output to STDERR to an error log file instead 
-# exec 2> "$BACKUP_DIR/backup_error.log"
-
 BACKUPS_EXIST=$(find "$BACKUP_DIR" -iname "*_backup_20*.tar.gz" | wc -l)
 if [ $BACKUPS_EXIST -gt 0 ]
 then
@@ -126,16 +121,16 @@ then
 					echo "Making a backup of the failed update."
 					# this line needs to be updated when in production as it
 					# will no longer source it, but rather run it as a command
-					ssbackup.sh
+					ssbackup.sh 2> "$BACKUP_DIR/backup_error.log"
 					# get the most recently created file and rename it
 					F=$(find "$BACKUP_DIR" -iname *.tar.gz -type f | sort | tail -n 1)
 					NF=$(basename "$F")
-					mv "$F" "$BACKUP_DIR/$FAILED_UPDATE_NAME_TGZ"
+					mv "$F" "$BACKUP_DIR/$FAILED_UPDATE_NAME_TGZ" 2> "$BACKUP_DIR/backup_error.log"
 				
 					echo "Uncompressing the selected backup file."
 					# uncompress the desired backup
-					mkdir -p "$TEMP_DIR"
-					tar -zxf "$BACKUP_DIR/$backup_file" -C "$TEMP_DIR"
+					mkdir -p "$TEMP_DIR" 2> "$BACKUP_DIR/backup_error.log"
+					tar -zxf "$BACKUP_DIR/$backup_file" -C "$TEMP_DIR" 2> "$BACKUP_DIR/backup_error.log"
 				
 					# get the name of the restore database
 					DB_RESTORE_NAME=$(echo $backup_file | cut -d'.' -f 1 | cut -d'_' -f 2-4)
@@ -151,20 +146,20 @@ then
 					echo "mysql -u $DB_USER $PASS -h $DB_HOST -e 'DROP DATABASE IF EXISTS $DB_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
 					echo "mysql -u $DB_USER $PASS -h $DB_HOST -e 'CREATE DATABASE IF NOT EXISTS $DB_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
 					echo "mysql -u $DB_USER $PASS -h $DB_HOST '$DB_NAME' < '$TEMP_DIR/$DB_RESTORE_NAME.sql'" >> "$BACKUP_DIR/mysql_restore.sh"
-					. "$BACKUP_DIR/mysql_restore.sh"
+					. "$BACKUP_DIR/mysql_restore.sh" 2> "$BACKUP_DIR/backup_error.log"
 				
 					echo "Restoring the WP files and all uploaded content."
 					# delete everything in public_html
-					rm -Rf "$THIS_DIR/$PUBLIC_HTML/*"
+					rm -Rf "$THIS_DIR/$PUBLIC_HTML/*" 2> "$BACKUP_DIR/backup_error.log"
 				
 					# move contents of restore folder to public_html
-					cp -R "$TEMP_DIR/" "$THIS_DIR/$PUBLIC_HTML/"
+					cp -R "$TEMP_DIR/" "$THIS_DIR/$PUBLIC_HTML/" 2> "$BACKUP_DIR/backup_error.log"
 				
 					echo "Removing temporary files."
 					# delete uncompressed folder (house cleaning)
-					rm -Rf "$TEMP_DIR"
-					rm -f "$BACKUP_DIR/mysql_restore.sh"
-					rm -f "$THIS_DIR/$PUBLIC_HTML/$DB_RESTORE_NAME.sql"
+					rm -Rf "$TEMP_DIR" 2> "$BACKUP_DIR/backup_error.log"
+					rm -f "$BACKUP_DIR/mysql_restore.sh" 2> "$BACKUP_DIR/backup_error.log"
+					rm -f "$THIS_DIR/$PUBLIC_HTML/$DB_RESTORE_NAME.sql" 2> "$BACKUP_DIR/backup_error.log"
 					echo "Done! The site has been restored."
 					exit 0
 					break
@@ -181,5 +176,3 @@ else
 	echo "Sorry. There don't appear to be any backup files available for restoring."
 	echo "Did you run ssbackup.sh before running this RESTORE command?"
 fi
-# Turn off redirect by reverting STDERR and closing FH3 
-# exec 2>&3-
