@@ -18,6 +18,7 @@ We are going to update the fictitious site fancywidgets.com. Fancywidgets.com is
 For this example we assume these two scripts are installed on the server (probably in /usr/local/bin, but could be anywhere a normal users can run them).
 
 These are the steps we follow to update a site:
+
 1. Log on to the server via SSH
 2. Navigate to the directory just above your DOCUMENT_ROOT. On a shared server you probably won't have do to anything as the default is to land in your home directory, which usually has public_html as a subdirectory.
 3. Run ssbackup.sh. The script will create a complete backup of your database and site files.
