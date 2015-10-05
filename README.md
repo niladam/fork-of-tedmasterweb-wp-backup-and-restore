@@ -4,6 +4,9 @@ ssbackup.sh and ssrestore.sh are two scripts designed to facilitate the process 
 
 As you may already know, updating a WordPress site can be a tedious task rife with errors, especially if you use poorly written plugins or themes (we all cave to the pressure sometimes). Using these two scripts you can easily backup and restore WordPress sites should the update fail.
 
+# LICENSE #
+Released without warranty under GPLv2
+
 # IMPORTANT #
 The scripts assume a few things that, if not totally kosher, may have unexpected consequences. This is what the script assumes:
 
