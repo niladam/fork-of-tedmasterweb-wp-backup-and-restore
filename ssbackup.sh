@@ -40,6 +40,7 @@ MYSQLDCOMMAND="$BACKUP_DIR/mysqldump.sh"
 # make sure wp-config.php actually exists before doing anything else
 if [ -f "$WP_CONFIG" ]
 then
+	echo "Found the wp-config.php file. This is good!"
 	# add prompts for migration
 	if [ 'true' == "$DO_MIGRATION" ]
 	then
@@ -51,7 +52,7 @@ then
 			echo 'The Home URL cannot be blank. Proceeding without preparing for a migration.'
 		else
 			echo "You entered $NEW_HOME_URL. What is the new Site URL?"
-			read -p "Please enter the new Site URL [ex.: $NEW_HOME_URL/blog - leave blank to use the new Home URL] and hit Enter: " NEW_SITE_URL
+			read -p "Please enter the new Site URL [$NEW_HOME_URL]: " NEW_SITE_URL
 			if [ "" == "$NEW_SITE_URL" ]
 			then
 				NEW_SITE_URL="$NEW_HOME_URL"
@@ -61,7 +62,6 @@ then
 		fi
 	fi
 	
-	echo "Found the wp-config.php file. This is good!"
 	# get the DB config from wp-config.php
 	DB_NAME=$(grep -o -E '^\s*define.+?DB_NAME.+?,\s*.+?[a-zA-Z_][a-zA-Z_0-9]*' "$WP_CONFIG" | cut -d"'" -f 4)
 	DB_USER=$(grep -o -E '^\s*define.+?DB_USER.+?,\s*.+?[a-zA-Z_][a-zA-Z_0-9]*' "$WP_CONFIG" | cut -d"'" -f 4)
@@ -70,26 +70,21 @@ then
 	DB_TABLE_PREFIX=$(grep -o -E '^\s*\$table_prefix\s*=\s*.*' "$WP_CONFIG" | cut -d"'" -f 2)
 	BACKUP_NAME_TGZ="${DB_NAME}_$BACKUP_NAME.tar.gz"
 
-	# if the password is empty, as could be the case for insecure servers, don't use the -p switch
-	if [ "" == "$DB_PASS" ]
+	if [ 'true' == "$DO_MIGRATION" ]
 	then
-		echo "Either the password is blank or we were unable to find it."
-		read -p "Please enter the password for this site and hit Enter, or hit Enter to leave it blank: " DB_PASS
-		if [ "" == "$DB_PASS" ]
+		read -p "Please enter the database username for the new site [$DB_USER]: " DB_USER_NEW
+		if [ "" == "$DB_USER_NEW" ]
 		then
-			PASS=''
-		else
-			PASS="$DB_PASS"
+			if [ "" == "$DB_USER" ]
+			then
+				echo "We're sorry but the database username cannot be left blank."
+				echo "No action has been taken."
+				exit 104
+			else
+				DB_USER_NEW="$DB_USER"
+			fi
 		fi
 	else
-		echo "The password is NOT empty, this is good!"
-		PASS="-p'$DB_PASS'"
-	fi
-	
-	if [ "" == "$DB_USER" ]
-	then
-		echo "Either the database username is blank or we were unable to find it."
-		read -p "Please enter the database username for this site and hit Enter: " DB_USER
 		if [ "" == "$DB_USER" ]
 		then
 			echo "We're sorry but the database username cannot be left blank."
@@ -98,10 +93,48 @@ then
 		fi
 	fi
 	
-	if [ "" == "$DB_NAME" ]
+	
+	if [ 'true' == "$DO_MIGRATION" ]
 	then
-		echo "Either the database name is blank or we were unable to find it."
-		read -p "Please enter the database name for this site and hit Enter: " DB_NAME
+		read -p "Please enter the password for this site [$DB_PASS]: " DB_PASS_NEW
+		# if the password is empty, as could be the case for insecure servers, don't use the -p switch
+		if [ "" == "$DB_PASS_NEW" ]
+		then
+			if [ "" == "$DB_PASS" ]
+			then
+				PASS_NEW=''
+			else
+				echo "The password is NOT empty, this is good!"
+				PASS_NEW="$DB_PASS"
+			fi
+		else
+			PASS_NEW="$DB_PASS_NEW"
+		fi
+	else
+		if [ "" == "$DB_PASS" ]
+		then
+			PASS=''
+		else
+			echo "The password is NOT empty, this is good!"
+			PASS="-p'$DB_PASS'"
+		fi
+	fi
+	
+	if [ 'true' == "$DO_MIGRATION" ]
+	then
+		read -p "Please enter the database name for this site [$DB_NAME]: " DB_NAME_NEW
+		if [ "" == "$DB_NAME_NEW" ]
+		then
+			if [ "" == "$DB_NAME" ]
+			then
+				echo "We're sorry but the database name cannot be left blank."
+				echo "No action has been taken."
+				exit 105
+			else
+				DB_NAME_NEW="$DB_NAME"
+			fi
+		fi
+	else
 		if [ "" == "$DB_NAME" ]
 		then
 			echo "We're sorry but the database name cannot be left blank."
@@ -110,10 +143,21 @@ then
 		fi
 	fi
 	
-	if [ "" == "$DB_HOST" ]
+	if [ 'true' == "$DO_MIGRATION" ]
 	then
-		echo "Either the database host is blank or we were unable to find it."
-		read -p "Please enter the database host for this site and hit Enter: " DB_HOST
+		read -p "Please enter the database host for this site [$DB_HOST]: " DB_HOST_NEW
+		if [ "" == "$DB_HOST_NEW" ]
+		then
+			if [ "" == "$DB_HOST" ]
+			then
+				echo "We're sorry but the database host cannot be left blank."
+				echo "No action has been taken."
+				exit 106
+			else
+				DB_HOST_NEW="$DB_HOST"
+			fi
+		fi
+	else
 		if [ "" == "$DB_HOST" ]
 		then
 			echo "We're sorry but the database host cannot be left blank."
@@ -122,10 +166,10 @@ then
 		fi
 	fi
 	
-	HOST_HAS_PORT=$(echo $DB_HOST | grep -o ':')
+	HOST_HAS_PORT=$(echo $DB_HOST_NEW | grep -o ':')
 	if [ ! "" == "$HOST_HAS_PORT" ]
 	then
-		DB_HOST=${DB_HOST/\:[0-9]*/}
+		DB_HOST_NEW=${DB_HOST_NEW/\:[0-9]*/}
 	fi
 	
 	if [ "" == "$DB_TABLE_PREFIX" ]
@@ -191,10 +235,36 @@ then
 			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed "s@$OLD_HOME_URL@$NEW_HOME_URL@g") 2> "$BACKUP_DIR/backup_error.log"
 			echo "$NEW_SQL" > "$DB_BACKUP_FILE" 2> "$BACKUP_DIR/backup_error.log"
 			echo "Updated references to $OLD_SITE_URL and $OLD_HOME_URL to $NEW_SITE_URL and $NEW_HOME_URL."
+			echo "Updating wp-config.php to use the new values."
+			mkdir -p "$BACKUP_DIR/temp"
+			# make a backup of the existing wp-config so as not to overwrite
+			cp "$THIS_DIR/$PUBLIC_HTML/wp-config.php" "$BACKUP_DIR/temp/wp-config.php"
+			NEW_WP_CONFIG=$(cat "$WP_CONFIG")
+			if [ ! "$DB_USER" == "$DB_USER_NEW" ]
+			then
+				NEW_WP_CONFIG=$(echo "$NEW_WP_CONFIG" | sed -e "s@^define *( *'DB_USER', *'$DB_USER'@define('DB_USER', '$DB_USER_NEW'@g") 2> "$BACKUP_DIR/backup_error.log"
+			fi
+			if [ ! "$DB_PASS" == "$DB_PASS_NEW" ]
+			then
+				NEW_WP_CONFIG=$(echo "$NEW_WP_CONFIG" | sed -e "s@^define *( *'DB_PASSWORD', *'$DB_PASSWORD'@define('DB_PASSWORD', '$DB_PASS_NEW'@g") 2> "$BACKUP_DIR/backup_error.log"
+			fi
+			if [ ! "$DB_NAME" == "$DB_NAME_NEW" ]
+			then
+				NEW_WP_CONFIG=$(echo "$NEW_WP_CONFIG" | sed -e "s@^define *( *'DB_NAME', *'$DB_NAME'@define('DB_NAME', '$DB_NAME_NEW'@g") 2> "$BACKUP_DIR/backup_error.log"
+			fi
+			if [ ! "$DB_HOST" == "$DB_HOST_NEW" ]
+			then
+				NEW_WP_CONFIG=$(echo "$NEW_WP_CONFIG" | sed -e "s@^define *( *'DB_HOST', *'$DB_NAME'@define('DB_HOST', '$DB_HOST_NEW'@g") 2> "$BACKUP_DIR/backup_error.log"
+			fi
+			echo "$NEW_WP_CONFIG" > "$WP_CONFIG"
 		fi
 
 		tar -czf "$BACKUP_DIR/$BACKUP_NAME_TGZ" -C "$THIS_DIR/$PUBLIC_HTML" . 2> "$BACKUP_DIR/backup_error.log"
 		echo "Cleaning up..."
+		if [ 'true' == "$DO_MIGRATION" ]
+		then
+			cp "$BACKUP_DIR/temp/wp-config.php" "$THIS_DIR/$PUBLIC_HTML/wp-config.php" 2> "$BACKUP_DIR/backup_error.log"
+		fi
 		rm -f "$MYSQLDCOMMAND" 2> "$BACKUP_DIR/backup_error.log"
 		rm -f "$DB_BACKUP_FILE" 2> "$BACKUP_DIR/backup_error.log"
 		echo "Done. The backup file is: $BACKUP_DIR/$BACKUP_NAME_TGZ"
