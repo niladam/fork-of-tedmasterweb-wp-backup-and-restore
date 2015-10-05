@@ -18,7 +18,7 @@ The scripts assume a few things that, if not totally kosher, may have unexpected
 
 We are going to update the fictitious site fancywidgets.com. Fancywidgets.com is a WooCommerce store with a blog and all kinds of social plugins and masonry galleries and every manner of hook and theme modification you can imagine. The update is going to fail…
 
-For this example we assume these two scripts are installed on the server (probably in /usr/local/bin, but could be anywhere a normal users can run them).
+For this example we assume these two scripts are installed on the server (probably in /usr/local/bin, but could be anywhere a normal user can run them).
 
 These are the steps we follow to update a site:
 
