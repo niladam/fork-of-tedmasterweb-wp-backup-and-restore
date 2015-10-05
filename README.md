@@ -19,7 +19,7 @@ For this example we assume these two scripts are installed on the server (probab
 
 These are the steps we follow to update a site:
 
-1. Log on to the server via SSH
+1. Log on to the server via SSH.
 2. Navigate to the directory just above your DOCUMENT_ROOT. On a shared server you probably won't have do to anything as the default is to land in your home directory, which usually has public_html as a subdirectory.
 3. Run ssbackup.sh. The script will create a complete backup of your database and site files.
 4. Log in to the WordPress Admin and run the updaters.
@@ -33,29 +33,17 @@ If, for some reason, your DOCUMENT_ROOT is not called "public_html", you can cha
 ssbackup.sh --documentroot 'web'
 ```
 
+## Experimental - Use At Your Own Risk ##
 
-### What is this repository for? ###
+Now that we've got a "packaging" system, it only makes sense to use it to migrate sites from local dev machines to staging and production servers. You can do that by passing the --migrate flag to the backup script and following the prompts.
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+```
+ssbackup.sh --migrate
+```
 
-### How do I get set up? ###
+When you've made your backup, copy it to the SecretSourceBackups folder and run ssrestore.sh, then select it from the list to update your wordpress installation. Please note, YOUR ENTIRE DOCUMENT_ROOT FOLDER WILL BE OVERWITTEN WITH THIS COMMAND AND YOU WILL LOSE ALL DATA. Please understand what you are doing prior to running this command this way. (actually, prior to restoring, the command will make a backup of your existing installation just in case… but still).
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+Good luck!
 
-### Contribution guidelines ###
-
-* Writing tests
-* Code review
-* Other guidelines
-
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
+Ted
+http://secret-source.eu
