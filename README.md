@@ -11,7 +11,7 @@ The scripts assume a few things that, if not totally kosher, may have unexpected
 2. You will run the script from the directory just above your DOCUMENT_ROOT. So, if you log in to your account on a share host, you'll have a subfolder called "public_html".
 3. You are NOT doing multisite WordPress (maybe I'll write something for that some day…)
 
-# An Exmaple #
+# An Example #
 
 We are going to update the fictitious site fancywidgets.com. Fancywidgets.com is a WooCommerce store with a blog and all kinds of social plugins and masonry galleries and every manner of hook and theme modification you can imagine. The update is going to fail…
 
