@@ -110,14 +110,14 @@ then
 		else
 			PASS_NEW="$DB_PASS_NEW"
 		fi
+	fi
+	
+	if [ "" == "$DB_PASS" ]
+	then
+		PASS=''
 	else
-		if [ "" == "$DB_PASS" ]
-		then
-			PASS=''
-		else
-			echo "The password is NOT empty, this is good!"
-			PASS="-p'$DB_PASS'"
-		fi
+		echo "The password is NOT empty, this is good!"
+		PASS="-p'$DB_PASS'"
 	fi
 	
 	if [ 'true' == "$DO_MIGRATION" ]
