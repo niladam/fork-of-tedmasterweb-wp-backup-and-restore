@@ -124,7 +124,7 @@ then
 						echo "Making a backup of the failed update."
 						# this line needs to be updated when in production as it
 						# will no longer source it, but rather run it as a command
-						ssbackup.sh --documentroot "'"$PUBLIC_HTML"'"
+						ssbackup.sh --documentroot "$PUBLIC_HTML"
 						# get the most recently created file and rename it
 						F=$(find "$BACKUP_DIR" -iname *.tar.gz -type f | sort | tail -n 1)
 						NF=$(basename "$F")
@@ -136,7 +136,8 @@ then
 						tar -zxf "$BACKUP_DIR/$backup_file" -C "$TEMP_DIR" 2> "$BACKUP_DIR/backup_error.log"
 				
 						# get the name of the restore database
-						DB_RESTORE_NAME=$(echo $backup_file | cut -d'.' -f 1 | cut -d'_' -f 2-4)
+						# select the last line of files that start with backup_ and end with .sql
+						DB_RESTORE_NAME=$(ls "$TEMP_DIR/backup_*.sql" | tail -n 1 | cut -d'/' -f 2)
 						echo "Restoring from $DB_RESTORE_NAME.sql"
 				
 						echo "Restoring the database."
