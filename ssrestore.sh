@@ -138,7 +138,7 @@ then
 						# get the name of the restore database
 						# select the last line of files that start with backup_ and end with .sql
 						DB_RESTORE_NAME=$(basename $(find "$TEMP_DIR" -type f -iregex '.*/backup_.+\.sql' | tail -n 1))
-						echo "Restoring from $DB_RESTORE_NAME.sql"
+						echo "Restoring from $DB_RESTORE_NAME"
 				
 						echo "Restoring the database."
 						# put WP into maintenace mode, if possible
@@ -149,7 +149,7 @@ then
 						" >> "$BACKUP_DIR/mysql_restore.sh"
 						echo "mysql -u '$DB_USER' $PASS -h '$DB_HOST' -e 'DROP DATABASE IF EXISTS $DB_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
 						echo "mysql -u '$DB_USER' $PASS -h '$DB_HOST' -e 'CREATE DATABASE IF NOT EXISTS $DB_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
-						echo "mysql -u '$DB_USER' $PASS -h '$DB_HOST' '$DB_NAME' < '$TEMP_DIR/$DB_RESTORE_NAME.sql'" >> "$BACKUP_DIR/mysql_restore.sh"
+						echo "mysql -u '$DB_USER' $PASS -h '$DB_HOST' '$DB_NAME' < '$TEMP_DIR/$DB_RESTORE_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
 						. "$BACKUP_DIR/mysql_restore.sh" 2> "$BACKUP_DIR/backup_error.log"
 				
 						echo "Restoring the WP files and all uploaded content."
