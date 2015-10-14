@@ -137,7 +137,7 @@ then
 				
 						# get the name of the restore database
 						# select the last line of files that start with backup_ and end with .sql
-						DB_RESTORE_NAME=$(ls "$TEMP_DIR/backup_*.sql" | tail -n 1 | cut -d'/' -f 2)
+						DB_RESTORE_NAME=$(find "$TEMP_DIR" -type f -iregex '.*/backup_.+\.sql' | tail -n 1 | cut -d'/' -f 3)
 						echo "Restoring from $DB_RESTORE_NAME.sql"
 				
 						echo "Restoring the database."
@@ -161,8 +161,8 @@ then
 				
 						echo "Removing temporary files."
 						# delete uncompressed folder (house cleaning)
-						rm -Rf "$TEMP_DIR" 2> "$BACKUP_DIR/backup_error.log"
-						rm -f "$BACKUP_DIR/mysql_restore.sh" 2> "$BACKUP_DIR/backup_error.log"
+						#rm -Rf "$TEMP_DIR" 2> "$BACKUP_DIR/backup_error.log"
+						#rm -f "$BACKUP_DIR/mysql_restore.sh" 2> "$BACKUP_DIR/backup_error.log"
 						rm -f "$THIS_DIR/$PUBLIC_HTML/$DB_RESTORE_NAME.sql" 2> "$BACKUP_DIR/backup_error.log"
 						echo "Done! The site has been restored."
 						exit 0
