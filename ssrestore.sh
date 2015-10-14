@@ -137,7 +137,7 @@ then
 				
 						# get the name of the restore database
 						# select the last line of files that start with backup_ and end with .sql
-						DB_RESTORE_NAME=$(find "$TEMP_DIR" -type f -iregex '.*/backup_.+\.sql' | tail -n 1 | cut -d'/' -f 3)
+						DB_RESTORE_NAME=$(basename $(find "$TEMP_DIR" -type f -iregex '.*/backup_.+\.sql' | tail -n 1))
 						echo "Restoring from $DB_RESTORE_NAME.sql"
 				
 						echo "Restoring the database."
