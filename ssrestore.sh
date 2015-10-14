@@ -53,7 +53,7 @@ then
 			then
 				PASS=''
 			else
-				PASS="$DB_PASS"
+				PASS="-p'$DB_PASS'"
 			fi
 		else
 			echo "The password is NOT empty, this is good!"
@@ -124,7 +124,7 @@ then
 						echo "Making a backup of the failed update."
 						# this line needs to be updated when in production as it
 						# will no longer source it, but rather run it as a command
-						ssbackup.sh
+						ssbackup.sh --documentroot "'"$PUBLIC_HTML"'"
 						# get the most recently created file and rename it
 						F=$(find "$BACKUP_DIR" -iname *.tar.gz -type f | sort | tail -n 1)
 						NF=$(basename "$F")
@@ -146,9 +146,9 @@ then
 						echo "
 				
 						" >> "$BACKUP_DIR/mysql_restore.sh"
-						echo "mysql -u $DB_USER $PASS -h $DB_HOST -e 'DROP DATABASE IF EXISTS $DB_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
-						echo "mysql -u $DB_USER $PASS -h $DB_HOST -e 'CREATE DATABASE IF NOT EXISTS $DB_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
-						echo "mysql -u $DB_USER $PASS -h $DB_HOST '$DB_NAME' < '$TEMP_DIR/$DB_RESTORE_NAME.sql'" >> "$BACKUP_DIR/mysql_restore.sh"
+						echo "mysql -u '$DB_USER' $PASS -h '$DB_HOST' -e 'DROP DATABASE IF EXISTS $DB_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
+						echo "mysql -u '$DB_USER' $PASS -h '$DB_HOST' -e 'CREATE DATABASE IF NOT EXISTS $DB_NAME'" >> "$BACKUP_DIR/mysql_restore.sh"
+						echo "mysql -u '$DB_USER' $PASS -h '$DB_HOST' '$DB_NAME' < '$TEMP_DIR/$DB_RESTORE_NAME.sql'" >> "$BACKUP_DIR/mysql_restore.sh"
 						. "$BACKUP_DIR/mysql_restore.sh" 2> "$BACKUP_DIR/backup_error.log"
 				
 						echo "Restoring the WP files and all uploaded content."
