@@ -59,6 +59,17 @@ then
 				echo "Using the new Home URL ($NEW_HOME_URL) as the new Site URL."
 			fi
 			echo "The new Site URL is $NEW_SITE_URL."
+			read -p "Please enter the new Site path. The current path is $THIS_DIR/$PUBLIC_HTML: " NEW_SITE_PATH
+			if [ "" == "$NEW_SITE_PATH" ]
+			then
+				NEW_SITE_PATH="$THIS_DIR/$PUBLIC_HTML"
+				echo "Using the current path ($THIS_DIR/$PUBLIC_HTML) as the new site path."
+			fi
+			if [ ! -d "$NEW_SITE_PATH" ]
+			then
+				echo "We're sorry. $NEW_SITE_PATH does not seem to be a valid path. Continuing anyway as the new path may be on a new server..."
+			fi
+			echo "The new site path is $NEW_SITE_PATH."
 		fi
 	fi
 	
@@ -230,11 +241,13 @@ then
 			# (33,'home','http://newmoneytree.local/~tedsr/isluk_v2/','yes'),
 			OLD_SITE_URL=$(grep -o -E "\([0-9]+,'siteurl','.+?','(yes|no)'\)," "$DB_BACKUP_FILE" | cut -d"'" -f 4) 2>> "$BACKUP_DIR/backup_error.log"
 			OLD_HOME_URL=$(grep -o -E "\([0-9]+,'home','.+?','(yes|no)'\)," "$DB_BACKUP_FILE" | cut -d"'" -f 4) 2>> "$BACKUP_DIR/backup_error.log"
-			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed -e "s@$OLD_SITE_URL@$NEW_SITE_URL@g") 2>> "$BACKUP_DIR/backup_error.log"
+			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed "s@$OLD_SITE_URL@$NEW_SITE_URL@g") 2>> "$BACKUP_DIR/backup_error.log"
 			echo "$NEW_SQL" > "$DB_BACKUP_FILE" 2>> "$BACKUP_DIR/backup_error.log"
-			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed -e "s@$OLD_HOME_URL@$NEW_HOME_URL@g") 2>> "$BACKUP_DIR/backup_error.log"
+			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed "s@$OLD_HOME_URL@$NEW_HOME_URL@g") 2>> "$BACKUP_DIR/backup_error.log"
 			echo "$NEW_SQL" > "$DB_BACKUP_FILE" 2>> "$BACKUP_DIR/backup_error.log"
 			echo "Updated references to $OLD_SITE_URL and $OLD_HOME_URL to $NEW_SITE_URL and $NEW_HOME_URL."
+			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed "s@$THIS_DIR/$PUBLIC_HTML@$NEW_SITE_PATH@g") 2>> "$BACKUP_DIR/backup_error.log"
+			echo "$NEW_SQL" > "$DB_BACKUP_FILE" 2>> "$BACKUP_DIR/backup_error.log"
 			echo "Updating wp-config.php to use the new values."
 			mkdir -p "$BACKUP_DIR/temp"
 			# make a backup of the existing wp-config so as not to overwrite
@@ -242,19 +255,22 @@ then
 			NEW_WP_CONFIG=$(cat "$WP_CONFIG")
 			if [ ! "$DB_USER" == "$DB_USER_NEW" ]
 			then
-				NEW_WP_CONFIG=$(echo "$NEW_WP_CONFIG" | sed -e "s@^define *( *'DB_USER', *'$DB_USER'@define('DB_USER', '$DB_USER_NEW'@g") 2>> "$BACKUP_DIR/backup_error.log"
+				NEW_WP_CONFIG=$(echo "$NEW_WP_CONFIG" | sed "s@^define *( *'DB_USER', *'$DB_USER'@define('DB_USER', '$DB_USER_NEW'@g") 2>> "$BACKUP_DIR/backup_error.log"
 			fi
 			if [ ! "$DB_PASS" == "$DB_PASS_NEW" ]
 			then
-				NEW_WP_CONFIG=$(echo "$NEW_WP_CONFIG" | sed -e "s@^define *( *'DB_PASSWORD', *'$DB_PASS'@define('DB_PASSWORD', '$DB_PASS_NEW'@g") 2>> "$BACKUP_DIR/backup_error.log"
+				# this fails if the password contains an at symbol
+				ESCAPED_DB_PASS=$(echo $DB_PASS | sed 's/[\/&]/\\&/g')
+				ESCAPED_DB_PASS_NEW=$(echo $DB_PASS_NEW | sed 's/[]\/$*.^|[]/\\&/g')
+				NEW_WP_CONFIG=$(echo "$NEW_WP_CONFIG" | sed "s/^define *( *'DB_PASSWORD', *'$ESCAPED_DB_PASS'/define('DB_PASSWORD', '$ESCAPED_DB_PASS_NEW'/g") 2>> "$BACKUP_DIR/backup_error.log"
 			fi
 			if [ ! "$DB_NAME" == "$DB_NAME_NEW" ]
 			then
-				NEW_WP_CONFIG=$(echo "$NEW_WP_CONFIG" | sed -e "s@^define *( *'DB_NAME', *'$DB_NAME'@define('DB_NAME', '$DB_NAME_NEW'@g") 2>> "$BACKUP_DIR/backup_error.log"
+				NEW_WP_CONFIG=$(echo "$NEW_WP_CONFIG" | sed "s@^define *( *'DB_NAME', *'$DB_NAME'@define('DB_NAME', '$DB_NAME_NEW'@g") 2>> "$BACKUP_DIR/backup_error.log"
 			fi
 			if [ ! "$DB_HOST" == "$DB_HOST_NEW" ]
 			then
-				NEW_WP_CONFIG=$(echo "$NEW_WP_CONFIG" | sed -e "s@^define *( *'DB_HOST', *'$DB_NAME'@define('DB_HOST', '$DB_HOST_NEW'@g") 2>> "$BACKUP_DIR/backup_error.log"
+				NEW_WP_CONFIG=$(echo "$NEW_WP_CONFIG" | sed "s@^define *( *'DB_HOST', *'$DB_NAME'@define('DB_HOST', '$DB_HOST_NEW'@g") 2>> "$BACKUP_DIR/backup_error.log"
 			fi
 			echo "$NEW_WP_CONFIG" > "$WP_CONFIG"
 		fi

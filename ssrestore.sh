@@ -48,9 +48,11 @@ then
 	if [ $backup_filelist_bytes -gt 1 ]
 	then
 		PS3='Restore a site from backup: '
-		until [ "$backup_file" == "Finished" ]; do
+		until [ "$backup_file" == "Finished" ]
+		do
 			printf "%b" "\a\n\nPlease type the number of the archive you would like to restore from:\n" >&2 
-			select backup_file in $backup_filelist; do
+			select backup_file in $backup_filelist
+			do
 				# User types a number which is stored in $REPLY, but select 
 				# returns the value of the entry
 				if [ "$backup_file" == "Finished" ]; then
