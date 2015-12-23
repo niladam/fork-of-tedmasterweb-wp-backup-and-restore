@@ -202,7 +202,7 @@ then
 	
 	" >> "$MYSQLDCOMMAND"
 	# not really sure how to capture a non-zero exit status from the command below
-	echo "mysqldump -u '$DB_USER' $PASS -h $DB_HOST '$DB_NAME' > '$DB_BACKUP_FILE'" >> "$MYSQLDCOMMAND"
+	echo "mysqldump --lock-tables -u '$DB_USER' $PASS -h $DB_HOST '$DB_NAME' > '$DB_BACKUP_FILE'" >> "$MYSQLDCOMMAND"
 	. "$MYSQLDCOMMAND" 2>> "$BACKUP_DIR/backup_error.log"
 
 	if [ -f "$DB_BACKUP_FILE" ]
@@ -211,10 +211,10 @@ then
 		# do a sanity check
 		#	make sure it is a minimum size
 		DB_BACKUP_FILE_SIZE=$(du -k "$DB_BACKUP_FILE" | cut -f 1) 2>> "$BACKUP_DIR/backup_error.log"
-		if [ "$DB_BACKUP_FILE_SIZE" -lt 500 ]
+		if [ "$DB_BACKUP_FILE_SIZE" -lt 84 ]
 		then
 			# file size is too small
-			echo "The size of the database dump seems suspiciously small ($st_size). Please check the size and try again."
+			echo "The size of the database dump seems suspiciously small ($DB_BACKUP_FILE_SIZE). Please check the size and try again."
 			exit 102
 		else
 			echo "The backup file seems to be large enough to be valid"
@@ -248,6 +248,25 @@ then
 			echo "Updated references to $OLD_SITE_URL and $OLD_HOME_URL to $NEW_SITE_URL and $NEW_HOME_URL."
 			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed "s@$THIS_DIR/$PUBLIC_HTML@$NEW_SITE_PATH@g") 2>> "$BACKUP_DIR/backup_error.log"
 			echo "$NEW_SQL" > "$DB_BACKUP_FILE" 2>> "$BACKUP_DIR/backup_error.log"
+			
+			# At this point all paths and URLs have been updated but if 
+			# the theme contains options as serialized arrays or strings
+			# the update will fail. So, we need to update the string 
+			# lengths in the serialized arrays before we can proceed.
+			# a:5:{s:3:"url";s:80:"http://localhost/~tedsr/rosa2test/wp-content/uploads/2014/06/logo-rosa-white.png";s:2:"id";s:3:"200";s:6:"height";s:2:"28";s:5:"width";s:2:"86";s:9:"thumbnail";s:80:"http://localhost/~tedsr/rosa2test/wp-content/uploads/2014/06/logo-rosa-white.png";}
+			# 
+			
+			# first let's see if this is even necessary
+			UPDATE_OPTS=$(grep -E 's:[0-9]+:"http(s)?://[^"]*?"' "$DB_BACKUP_FILE")
+			if [ ! "$UPDATE_OPTS" == "" ]
+			then
+				echo "Updating theme and plugin options."
+				# here the trick is to update a value in the replacement based on a value in the search... or something like that.
+				
+			else
+				echo "Theme and plugin options do not appear to need updating."
+			fi
+			
 			echo "Updating wp-config.php to use the new values."
 			mkdir -p "$BACKUP_DIR/temp"
 			# make a backup of the existing wp-config so as not to overwrite
@@ -274,7 +293,17 @@ then
 			fi
 			echo "$NEW_WP_CONFIG" > "$WP_CONFIG"
 		fi
-
+		
+		# remove ennecessary readmes, licenses, and error_log files, fixddbb in addition to .DS_Store and ._filename files (usually invisible files on a mac)
+		if [ 'true' == "$DO_MIGRATION" ]
+		then
+			for F in $(find -E . -iregex '$THIS_DIR/$PUBLIC_HTML/.*((readme|license)(\.(htm(l)?|txt))*|error_log|fixddbb\.php)$' -type f)
+			do
+				echo "Removing cruft: $F"
+				rm -f "$F"
+			done
+		fi
+		
 		tar -czf "$BACKUP_DIR/$BACKUP_NAME_TGZ" -C "$THIS_DIR/$PUBLIC_HTML" . 2>> "$BACKUP_DIR/backup_error.log"
 		echo "Cleaning up..."
 		if [ 'true' == "$DO_MIGRATION" ]
