@@ -267,6 +267,11 @@ then
 				echo "Theme and plugin options do not appear to need updating."
 			fi
 			
+			# replace references to utf8mb4 to just utf8
+			# See this bug report for details: https://secretsource.atlassian.net/browse/SECRETSOUR-46
+			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed 's/utf8mb4/utf8/g') 2>> "$BACKUP_DIR/backup_error.log"
+			echo "$NEW_SQL" > "$DB_BACKUP_FILE" 2>> "$BACKUP_DIR/backup_error.log"
+			
 			echo "Updating wp-config.php to use the new values."
 			mkdir -p "$BACKUP_DIR/temp"
 			# make a backup of the existing wp-config so as not to overwrite
@@ -294,7 +299,7 @@ then
 			echo "$NEW_WP_CONFIG" > "$WP_CONFIG"
 		fi
 		
-		# remove ennecessary readmes, licenses, and error_log files, fixddbb in addition to .DS_Store and ._filename files (usually invisible files on a mac)
+		# remove ennecessary readmes, licenses, and error_log files, fixddbb.php in addition to .DS_Store and ._filename files (usually invisible files on a mac)
 		if [ 'true' == "$DO_MIGRATION" ]
 		then
 			for F in $(find -E . -iregex '$THIS_DIR/$PUBLIC_HTML/.*((readme|license)(\.(htm(l)?|txt))*|error_log|fixddbb\.php)$' -type f)
