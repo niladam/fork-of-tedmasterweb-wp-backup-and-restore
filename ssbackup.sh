@@ -222,7 +222,7 @@ then
 		#	make sure some key tables are defined
 		# grep the backup file looking for definitions of default tables
 		# if all the tables are there (as judged by the number of lines found, S/B 11) then proceed
-		TABLES=$(grep -c -E 'CREATE TABLE `'${DB_TABLE_PREFIX}'(commentmeta|comments|links|options|postmeta|posts|term_relationships|term_taxonomy|terms|usermeta|users)`' "$DB_BACKUP_FILE") 2>> "$BACKUP_DIR/backup_error.log"
+		TABLES=$(grep -c -E 'CREATE TABLE `'${DB_TABLE_PREFIX}'(commentmeta|comments|links|options|postmeta|posts|term_relationships|term_taxonomy|termmeta|terms|usermeta|users)`' "$DB_BACKUP_FILE") 2>> "$BACKUP_DIR/backup_error.log"
 		if [ $TABLES -lt 11 ]
 		then
 			echo "The backup seems to have failed. Specifically, we seem to be missing some core tables in the database backup. Please check the file and try again."
