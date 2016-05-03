@@ -173,7 +173,7 @@ then
 					rm -Rf "$THIS_DIR/$PUBLIC_HTML/*"
 					OWD=$(pwd)
 					cd "$TEMP_DIR"
-					cp -Rv . "$THIS_DIR/$PUBLIC_HTML/" 2> "$BACKUP_DIR/backup_error.log"
+					rsync -avHP . "$THIS_DIR/$PUBLIC_HTML/" 2> "$BACKUP_DIR/backup_error.log"
 					cd "$OWD"
 			
 					echo "Removing temporary files."

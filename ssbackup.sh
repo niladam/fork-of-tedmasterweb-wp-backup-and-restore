@@ -273,6 +273,8 @@ then
 			echo "$NEW_SQL" > "$DB_BACKUP_FILE" 2>> "$BACKUP_DIR/backup_error.log"
 			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed 's/COLLATE utf8mb4_unicode_ci/COLLATE utf8_unicode_ci/g') 2>> "$BACKUP_DIR/backup_error.log"
 			echo "$NEW_SQL" > "$DB_BACKUP_FILE" 2>> "$BACKUP_DIR/backup_error.log"
+			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed 's/COLLATE=utf8mb4_unicode_ci/COLLATE=utf8_unicode_ci/g') 2>> "$BACKUP_DIR/backup_error.log"
+			echo "$NEW_SQL" > "$DB_BACKUP_FILE" 2>> "$BACKUP_DIR/backup_error.log"
 			NEW_SQL=$(cat "$DB_BACKUP_FILE" | sed 's/CHARSET=utf8mb4/CHARSET=utf8/g') 2>> "$BACKUP_DIR/backup_error.log"
 			echo "$NEW_SQL" > "$DB_BACKUP_FILE" 2>> "$BACKUP_DIR/backup_error.log"
 			
