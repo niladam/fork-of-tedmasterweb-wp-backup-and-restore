@@ -50,3 +50,6 @@ Good luck!
 
 Ted
 http://secret-source.eu
+
+Going forward I want to start using wp-cli to improve the migration of theme options:
+wp search-replace 'http://localhost/' 'http://newmoneytree.local/' --all-tables --verbose
