@@ -23,6 +23,10 @@ do
 			shift
 			DOC_ROOT="${1:-public_html}"
 		;;
+		'--skip-uploads')
+			shift
+			SKIP_UPLOADS='true'
+		;;
 	esac
 done
 
@@ -315,7 +319,14 @@ then
 			done
 		fi
 		
-		tar -czf "$BACKUP_DIR/$BACKUP_NAME_TGZ" -C "$THIS_DIR/$PUBLIC_HTML" . 2>> "$BACKUP_DIR/backup_error.log"
+		if [ 'true' == "$SKIP_UPLOADS" ]
+		then
+		    EXCLUDE="--exclude=./wp-content/uploads"
+		else
+		    EXCLUDE=""
+		fi
+		tar -czf "$BACKUP_DIR/$BACKUP_NAME_TGZ" -C "$THIS_DIR/$PUBLIC_HTML" "$EXCLUDE" . 2>> "$BACKUP_DIR/backup_error.log"
+
 		echo "Cleaning up..."
 		if [ 'true' == "$DO_MIGRATION" ]
 		then
