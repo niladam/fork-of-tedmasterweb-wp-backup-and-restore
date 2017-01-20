@@ -1,3 +1,7 @@
+# FORKER's note
+
+This fork exists solely for historical purposes. This repo is not being maintaned whatsoever and some parts of this will be used in [wpeb](https://github.com/niladam/wpeb) that's currently in development. This fork has the permission of [@tedmasterweb](https://github.com/tedmasterweb), given in [@issuecomment-274083148](https://github.com/wp-cli/ideas/issues/5#issuecomment-274083148)
+
 # README #
 
 ssbackup.sh and ssrestore.sh are two scripts designed to facilitate the process of updating WordPress web sites.
